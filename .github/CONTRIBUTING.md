@@ -25,6 +25,83 @@ bun run biome:check  # Lint and format (auto-fix)
 bun run biome:ci     # Lint and format (check only)
 ```
 
+## Monitoring with Grafana & Tempo
+
+This project includes Grafana and Tempo for distributed tracing and monitoring of errors.
+
+### Docker Compose Setup
+
+```bash
+# Start monitoring services
+docker compose up -d
+
+# Stop monitoring services
+docker compose down
+
+# View logs
+docker compose logs -f
+```
+
+### Access Points
+
+- **Grafana:** http://localhost:3001 (anonymous access enabled for local dev) - Web UI for visualizing traces
+- **Tempo:** http://localhost:3200 - OpenTelemetry trace backend and UI
+- **Application:** http://localhost:5173 - Development server
+- **OTLP Endpoints:**
+  - gRPC: `localhost:4317`
+  - HTTP: `localhost:4318`
+
+### Test Scenarios
+
+The app includes comprehensive test scenarios for error handling, logging, and distributed tracing:
+
+**Unexpected Errors (Defects):**
+- **Schema Parsing Error:** http://localhost:5173/schema-error
+- **Load Function Error:** http://localhost:5173/load-error
+
+**Expected Errors (Control Flow):**
+- **404 Not Found:** http://localhost:5173/not-found-error
+- **Redirect Example:** http://localhost:5173/redirect-example
+- **Form Validation:** http://localhost:5173/form-validation
+
+**Advanced Patterns:**
+- **Concurrent Operations:** http://localhost:5173/concurrent-example
+- **Log Levels:** http://localhost:5173/log-levels
+- **Timeout & Retry:** http://localhost:5173/timeout-retry
+
+**Success Cases:**
+- **Load Example:** http://localhost:5173/load-example
+- **Home Page:** http://localhost:5173/
+
+Visit http://localhost:5173/errors for an organized index of all test scenarios.
+
+### How It Works
+
+The application uses:
+- **OpenTelemetry** to send traces to Tempo via OTLP (gRPC on port 4317, HTTP on port 4318)
+- **Effect Runtime** with integrated Logger and OTel layers
+- **Grafana** auto-provisioned with Tempo datasource for trace visualization
+- **Tempo** configured with:
+  - 48-hour trace retention for local development
+  - WAL (Write-Ahead Log) for reliable trace ingestion
+  - Metrics generator for additional insights
+- All operations through `remoteRunner` are automatically traced
+- Errors are logged with severity levels (Warning for expected errors, Error for unexpected)
+- Services include healthchecks and auto-restart on failure
+
+### Troubleshooting
+
+**Docker services won't start?**
+- Check if ports 3001 (Grafana), 3200 (Tempo), 4317 (OTLP gRPC), 4318 (OTLP HTTP) are available
+- Ensure Docker is running: `docker ps`
+- Check service health: `docker compose ps`
+
+**No traces appearing in Grafana?**
+- Verify Tempo is healthy: `docker compose logs tempo`
+- Check that the application is sending traces to `http://localhost:4317` or `http://localhost:4318`
+- Wait for healthchecks to pass (can take up to 30 seconds for Grafana)
+- Verify Tempo datasource in Grafana: Settings → Data Sources → Tempo
+
 ## Commit conventions
 
 This project uses [Conventional Commits](https://www.conventionalcommits.org/) to automate versioning and changelog generation via [semantic-release](https://github.com/semantic-release/semantic-release).
