@@ -1,0 +1,33 @@
+// Alloy configuration for receiving OTLP traces and forwarding to Tempo
+
+// OTLP receiver - accepts traces from your SvelteKit app
+// Runs on ports 4317 (gRPC) and 4318 (HTTP)
+otelcol.receiver.otlp "default" {
+  grpc {
+    endpoint = "0.0.0.0:4317"
+  }
+  http {
+    endpoint = "0.0.0.0:4318"
+  }
+  output {
+    traces = [otelcol.processor.batch.traces.input]
+  }
+}
+
+// Batch traces before sending to Tempo
+otelcol.processor.batch "traces" {
+  output {
+    traces = [otelcol.exporter.otlp.tempo.input]
+  }
+  timeout = "5s"
+}
+
+// Export traces to Tempo
+otelcol.exporter.otlp "tempo" {
+  client {
+    endpoint = "tempo:34317"
+    tls {
+      insecure = true
+    }
+  }
+}

@@ -3,11 +3,11 @@ import { OTLPTraceExporter } from "@opentelemetry/exporter-trace-otlp-http";
 import { BatchSpanProcessor } from "@opentelemetry/sdk-trace-base";
 import { Effect, Layer, Logger, LogLevel, ManagedRuntime } from "effect";
 import { env } from "$env/dynamic/private";
+import { logToLoki } from "../lib/logger-loki.ts";
 import { createRunner } from "../lib/runner.ts";
 
 const MainLayer = Layer.mergeAll(
 	Logger.json,
-	Logger.minimumLogLevel(LogLevel.Debug),
 	Logger.minimumLogLevel(LogLevel.Debug),
 	NodeSdk.layer(() => ({
 		resource: {
@@ -22,6 +22,12 @@ const MainLayer = Layer.mergeAll(
 	})),
 );
 
+const logWithLoki = <A>(message: A, annotation: string) =>
+	Effect.zipRight(
+		Logger.log(message, annotation),
+		logToLoki({ annotation, message }),
+	);
+
 export const RuntimeServer = ManagedRuntime.make(
 	MainLayer,
 ) as unknown as ManagedRuntime.ManagedRuntime<never, never>;
@@ -30,11 +36,13 @@ export type RuntimeServerContext = ManagedRuntime.ManagedRuntime.Context<
 >;
 
 export const remoteRunner = createRunner({
-	after: () => Effect.logInfo("Stopping operation"),
-	before: () => Effect.logInfo("Starting operation"),
+	after: () => logWithLoki("Stopping operation", "Info"),
+	before: () => logWithLoki("Starting operation", "Info"),
 	onError: (error, isUnexpectedError) =>
-		isUnexpectedError
-			? Effect.logError(`Unexpected error: ${error}`)
-			: Effect.logWarning(`Expected control flow error: ${error}`),
+		Effect.zipRight(
+			isUnexpectedError
+				? logWithLoki(`Unexpected error: ${error}`, "Error")
+				: logWithLoki(`Expected control flow error: ${error}`, "Warning"),
+		),
 	runtime: RuntimeServer,
 });

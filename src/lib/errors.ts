@@ -16,14 +16,22 @@ export namespace SvelteEffect {
 		code: Code;
 		details?: Record<string, unknown>;
 		message: string;
-		timestamp: string;
+		timestamp: Date;
 	}
 }
 
 export class SvelteKitError extends Error implements SvelteEffect.ErrorBody {
 	declare code: SvelteEffect.Code;
 	declare details?: Record<string, unknown>;
-	declare timestamp: string;
+	declare timestamp: Date;
+
+	static make(
+		message: string,
+		code: SvelteEffect.Code,
+		details?: Record<string, unknown>,
+	) {
+		return new SvelteKitError(message, code, details);
+	}
 
 	constructor(
 		message: string,
@@ -34,7 +42,7 @@ export class SvelteKitError extends Error implements SvelteEffect.ErrorBody {
 		this.name = "SvelteKitError";
 		this.code = code;
 		this.details = details;
-		this.timestamp = new Date().toISOString();
+		this.timestamp = new Date();
 	}
 }
 
@@ -54,6 +62,10 @@ export class SvelteKitRedirect extends Data.TaggedError("SvelteKitRedirect")<{
 	static make(status: Redirect["status"], location: string) {
 		return new SvelteKitRedirect({ location, status });
 	}
+
+	override get message() {
+		return `[${this.status}] → ${this.location}`;
+	}
 }
 
 /**
@@ -63,12 +75,7 @@ export class SvelteKitRedirect extends Data.TaggedError("SvelteKitRedirect")<{
  */
 export class SvelteKitHttpError extends Data.TaggedError("SvelteKitHttpError")<{
 	readonly status: HttpError["status"];
-	readonly body: {
-		code: SvelteEffect.Code;
-		details?: Record<string, unknown> | undefined;
-		message: string;
-		timestamp: string;
-	};
+	readonly body: SvelteEffect.ErrorBody;
 }> {
 	static make(
 		status: HttpError["status"],
@@ -81,10 +88,14 @@ export class SvelteKitHttpError extends Data.TaggedError("SvelteKitHttpError")<{
 				code,
 				details,
 				message,
-				timestamp: new Date().toISOString(),
+				timestamp: new Date(),
 			},
 			status,
 		});
+	}
+
+	override get message() {
+		return `[${this.status}] ${this.body.code}: ${this.body.message}${this.body.details ? ` | details: ${JSON.stringify(this.body.details)}` : ""}`;
 	}
 }
 
@@ -100,6 +111,10 @@ export class SvelteKitInvalidError extends Data.TaggedError(
 }> {
 	static make(...issues: Parameters<typeof invalid>) {
 		return new SvelteKitInvalidError({ issues });
+	}
+
+	override get message() {
+		return `Validation failed: ${JSON.stringify(this.issues)}`;
 	}
 }
 

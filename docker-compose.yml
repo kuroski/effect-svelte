@@ -1,5 +1,3 @@
-version: "3.8"
-
 services:
   grafana:
     image: grafana/grafana:11.4.0
@@ -9,14 +7,13 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
-      - GF_INSTALL_PLUGINS=grafana-tempo-datasource
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SERVER_ROOT_URL=http://localhost:3001
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
     volumes:
       - grafana-data:/var/lib/grafana
-      - ./docker-config/grafana:/etc/grafana/provisioning
+      - ./docker-config/grafana/provisioning:/etc/grafana/provisioning
     networks:
       - monitoring
     restart: unless-stopped
@@ -30,15 +27,53 @@ services:
     depends_on:
       tempo:
         condition: service_healthy
+      loki:
+        condition: service_healthy
+
+  loki:
+    image: grafana/loki:2.9.10
+    container_name: effect-svelte-loki
+    user: root
+    command: ["-config.file=/etc/loki/local-config.yaml"]
+    ports:
+      - "3100:3100"
+    volumes:
+      - ./docker-config/loki:/etc/loki
+      - loki-data:/tmp/loki
+    networks:
+      - monitoring
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3100/ready"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  alloy:
+    image: grafana/alloy:v1.6.1
+    container_name: effect-svelte-alloy
+    command: ["run", "/etc/alloy/config.alloy", "--server.http.listen-addr=0.0.0.0:12345"]
+    ports:
+      - "4317:4317" # OTLP gRPC receiver
+      - "4318:4318" # OTLP HTTP receiver
+      - "12345:12345" # Alloy UI
+    volumes:
+      - ./docker-config/alloy:/etc/alloy
+    networks:
+      - monitoring
+    restart: unless-stopped
+    depends_on:
+      - loki
+      - tempo
 
   tempo:
     image: grafana/tempo:2.7.2
     container_name: effect-svelte-tempo
+    user: root
     command: ["-config.file=/etc/tempo/tempo.yaml"]
     ports:
       - "3200:3200" # Tempo UI
-      - "4317:4317" # OTLP gRPC receiver
-      - "4318:4318" # OTLP HTTP receiver
     volumes:
       - ./docker-config/tempo:/etc/tempo
       - tempo-data:/tmp/tempo
@@ -54,6 +89,7 @@ services:
 
 volumes:
   grafana-data:
+  loki-data:
   tempo-data:
 
 networks:
