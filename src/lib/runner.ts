@@ -57,7 +57,7 @@ function handleExit<A>(exit: Exit.Exit<A, unknown>): A {
 						console.error("Unhandled Effect error:", Cause.pretty(cause));
 						throw error(
 							500,
-							new SvelteKitError("Internal Server Error", "GENERIC_ERROR"),
+							SvelteKitError.make("Internal Server Error", "GENERIC_ERROR"),
 						);
 					},
 					onSome: (failure) =>
@@ -68,7 +68,7 @@ function handleExit<A>(exit: Exit.Exit<A, unknown>): A {
 							Match.when(Match.instanceOf(SvelteKitHttpError), (err) => {
 								throw error(
 									err.status,
-									new SvelteKitError(
+									SvelteKitError.make(
 										err.body.message,
 										err.body.code,
 										err.body.details,
@@ -82,7 +82,7 @@ function handleExit<A>(exit: Exit.Exit<A, unknown>): A {
 								console.error("Unhandled Effect error:", Cause.pretty(cause));
 								throw error(
 									500,
-									new SvelteKitError("Internal Server Error", "GENERIC_ERROR"),
+									SvelteKitError.make("Internal Server Error", "GENERIC_ERROR"),
 								);
 							}),
 						),
