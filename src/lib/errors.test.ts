@@ -16,7 +16,7 @@ describe("redirectEffect", () => {
 
 		const error = extractFailure(exit);
 		expect(error).toBeInstanceOf(SvelteKitRedirect);
-		expect(error).toMatchInlineSnapshot(`[SvelteKitRedirect]`);
+		expect(error).toMatchInlineSnapshot(`[SvelteKitRedirect: [303] → /login]`);
 	});
 });
 
@@ -29,7 +29,9 @@ describe("httpErrorEffect", () => {
 
 		const error = extractFailure(exit);
 		expect(error).toBeInstanceOf(SvelteKitHttpError);
-		expect(error).toMatchInlineSnapshot(`[SvelteKitHttpError]`);
+		expect(error).toMatchInlineSnapshot(
+			`[SvelteKitHttpError: [404] NOT_FOUND: Not found]`,
+		);
 	});
 });
 
@@ -40,7 +42,9 @@ describe("invalidEffect", () => {
 
 		const error = extractFailure(exit);
 		expect(error).toBeInstanceOf(SvelteKitInvalidError);
-		expect(error).toMatchInlineSnapshot(`[SvelteKitInvalidError]`);
+		expect(error).toMatchInlineSnapshot(
+			`[SvelteKitInvalidError: Validation failed: [{"email":"bad"}]]`,
+		);
 	});
 });
 
